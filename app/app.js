@@ -14,6 +14,8 @@ export const KINDS = [
   { key: 'online', label: 'Online', hint: 'None at launch' },
 ];
 
+export const STAGE_NAMES = { 1: 'Stage 1 · Story', 2: 'Stage 2 · 100% checklist', 3: 'Stage 3 · Strangers & cleanup' };
+
 export const state = {
   trophies: [],
   earned: new Set(),
@@ -44,6 +46,20 @@ export function toggleEarned(id) {
   else state.earned.add(id);
   saveEarned();
   renderAll();
+}
+
+// v1.3: the next trophies to chase — unearned, in roadmap order (stage, then
+// list order), skipping the platinum itself until everything else is done.
+export function nextTrophies(count = 3) {
+  const rest = state.trophies
+    .filter((t) => !state.earned.has(t.id) && t.kind !== 'platinum')
+    .sort((a, b) => (a.roadmap - b.roadmap) || (a.id - b.id));
+  const picked = rest.slice(0, count);
+  if (state.earned.size === state.trophies.length - 1) {
+    const plat = state.trophies.find((t) => t.kind === 'platinum');
+    if (plat) picked.push(plat);
+  }
+  return picked.slice(0, count);
 }
 
 export function exportProgress() {

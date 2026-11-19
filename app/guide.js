@@ -1,14 +1,14 @@
-// Leonida Trophy Codex — rendering: progress, filters, trophy groups, cards.
+// Leonida Trophy Codex — rendering: progress, up-next strip, filters, trophy groups, cards.
 // Sources are shown as plain text (name + address), never as links: the guide
 // runs fully offline and fetches nothing.
 // Each trophy renders exactly once, in its primary group (its kind). A trophy
 // that also belongs to another group — the one missable trophy, Positive Mental
 // Attitude, whose kind is Collectibles — is cross-listed there by name with an
 // anchor to its card, never as a second card.
-// v1.2: every card also lists up to three related trophies (same chapter, same
+// Every card also lists up to three related trophies (same chapter, same
 // collectible chain, or same roadmap stage in the same kind), so a chain can
 // be followed from the card itself instead of searched for.
-import { state, KINDS, filteredTrophies, toggleEarned } from './app.js';
+import { state, KINDS, STAGE_NAMES, filteredTrophies, nextTrophies, toggleEarned } from './app.js';
 
 const GROUP_ORDER = [
   { key: 'platinum', title: 'The Platinum', sub: 'One trophy. Earn the other 54 and this is yours.' },
@@ -56,6 +56,7 @@ function relatedTrophies(t) {
 export function renderAll() {
   renderProgress();
   renderGradeChips();
+  renderUpNext();
   renderKindChips();
   renderGroups();
   renderSources();
@@ -80,6 +81,35 @@ function renderGradeChips() {
     const b = el('b', null, gradeLabel(grade));
     chip.append(b, ` ${have}/${total}`);
     box.append(chip);
+  }
+}
+
+// v1.3: Up next — three cards naming the next unearned trophies in roadmap
+// order; each is a link that jumps to the trophy's card further down the page.
+function renderUpNext() {
+  const box = document.getElementById('upNextCards');
+  box.replaceChildren();
+  const next = nextTrophies(3);
+  if (next.length === 0) {
+    const done = el('a', 'up-next-card done', '');
+    done.href = '#trophy-1';
+    done.append(
+      el('span', 'stage-tag', 'Platinum'),
+      el('p', 'next-name', 'Vice Got a Price! — all 55 earned'),
+      el('span', 'next-grade', 'Leonida Legend'),
+    );
+    box.append(done);
+    return;
+  }
+  for (const t of next) {
+    const card = el('a', 'up-next-card');
+    card.href = `#trophy-${t.id}`;
+    card.append(
+      el('span', 'stage-tag', STAGE_NAMES[t.roadmap] ?? `Stage ${t.roadmap}`),
+      el('p', 'next-name', t.hidden && state.spoiler ? 'Hidden Trophy' : t.name),
+      el('span', 'next-grade', `${gradeLabel(t.grade)}${t.missable ? ' · Missable' : ''}${t.unconfirmed ? ' · Unconfirmed' : ''}`),
+    );
+    box.append(card);
   }
 }
 

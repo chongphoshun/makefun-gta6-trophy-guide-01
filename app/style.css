@@ -41,7 +41,7 @@ h1 {
 .progress-bar { height: 12px; background: #241d52; border-radius: 6px; overflow: hidden; }
 .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--pink), var(--gold)); transition: width .3s; }
 .progress-text { margin: 8px 0 14px; font-size: 14px; color: var(--ink); }
-.grade-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.grade-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .grade-chip {
   font-size: 13px; padding: 4px 10px; border-radius: 20px;
   border: 1px solid var(--line); background: var(--bg-2); color: var(--ink-dim);
@@ -51,6 +51,23 @@ h1 {
 .grade-gold b { color: var(--gold); }
 .grade-silver b { color: var(--silver); }
 .grade-bronze b { color: var(--bronze); }
+
+/* v1.3: Up next — the next three unearned trophies in roadmap order, so the
+   reader always knows what to chase next without scrolling the whole list. */
+.up-next { max-width: 720px; }
+.up-next h2 { font-family: Georgia, serif; font-size: 20px; color: var(--gold); margin: 0 0 4px; }
+.up-next-sub { color: var(--ink-dim); font-size: 13px; margin: 0 0 10px; }
+.up-next-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.up-next-card {
+  display: block; background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; text-decoration: none; color: var(--ink);
+}
+.up-next-card:hover { border-color: var(--cyan); }
+.up-next-card .stage-tag { font-size: 11px; letter-spacing: .1em; color: var(--cyan); text-transform: uppercase; }
+.up-next-card .next-name { font-weight: 700; font-size: 14px; margin: 2px 0; }
+.up-next-card .next-grade { font-size: 12px; color: var(--ink-dim); }
+.up-next-card.done { border-color: var(--good); }
+.up-next-card.done .next-name { color: var(--good); }
 
 .roadmap { padding: 28px; max-width: 1100px; margin: 0 auto; }
 .roadmap h2, footer h2 { font-family: Georgia, serif; font-size: 30px; margin: 0 0 8px; color: var(--gold); }
@@ -127,8 +144,8 @@ button:hover, .import-btn:hover { border-color: var(--cyan); }
 .guide { margin: 0 0 8px; font-size: 15px; }
 .source { margin: 0 0 8px; font-size: 13px; color: #9d94bd; word-break: break-word; }
 .source b { color: var(--cyan); font-weight: 600; }
-/* v1.2: related trophies — follow a chain (same chapter, same collectible
-   set, same roadmap stage) without searching for it. */
+/* Related trophies — follow a chain (same chapter, same collectible set,
+   same roadmap stage) without searching for it. */
 .related { margin: 0; font-size: 13px; color: var(--ink-dim); }
 .related b { color: var(--gold); font-weight: 600; }
 .related a { color: var(--cyan); font-weight: 600; }
@@ -146,5 +163,6 @@ footer { max-width: 1100px; margin: 0 auto; padding: 10px 28px 40px; color: var(
 @media (max-width: 760px) {
   h1 { font-size: 36px; }
   .stages { grid-template-columns: 1fr; }
+  .up-next-cards { grid-template-columns: 1fr; }
   .source-list { columns: 1; }
 }
