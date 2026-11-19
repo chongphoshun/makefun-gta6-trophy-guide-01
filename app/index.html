@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leonida Trophy Codex — GTA VI Trophy Guide &amp; Tracker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="hero">
+  <p class="kicker">GRAND THEFT AUTO VI &middot; PLAYSTATION 5 &middot; 55 TROPHIES</p>
+  <h1>Leonida Trophy Codex</h1>
+  <p class="tagline">Every trophy, its official word, a guide in plain words with its source named beside it, and a tracker that remembers where you are on the road to the platinum.</p>
+  <div class="progress-wrap">
+    <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+    <p id="progressText" class="progress-text">0 of 55 earned &middot; 0% to the platinum</p>
+  </div>
+  <div class="grade-chips" id="gradeChips"></div>
+</header>
+
+<section class="roadmap" id="roadmap">
+  <h2>Road to the Platinum</h2>
+  <p class="roadmap-intro">About 200 hours, difficulty 4/10 (PowerPyx). One playthrough, no online trophies, no difficulty trophies, no mission medals. Cheats disable trophies and saving — and cheats only unlock after the story.</p>
+  <div class="stages">
+    <article class="stage">
+      <p class="stage-num">Stage 1 &middot; 60&ndash;80 hours</p>
+      <h3>Play the story</h3>
+      <p>Five chapters, 12 story trophies. Take optional missions as they appear, scan vehicles and study animals on the way — the 100% checklist counts progress from the start even though you cannot see it until after the credits.</p>
+      <p class="stage-warn">Meditate at Jason&rsquo;s house in Chapter 1. It is the one spot that disappears — see Positive Mental Attitude.</p>
+    </article>
+    <article class="stage">
+      <p class="stage-num">Stage 2 &middot; about 100 hours</p>
+      <h3>The 100% checklist</h3>
+      <p>After the credits, open Progress &gt; Stats &gt; 100% Completion. The bar is lenient — closer to 60% true completion: 70 of 80 challenges, 200 of 277 vehicles, 100 of 255 animals, 50 of 66 weapons, 300 stunts.</p>
+    </article>
+    <article class="stage">
+      <p class="stage-num">Stage 3 &middot; about 10 hours</p>
+      <h3>Strangers &amp; cleanup</h3>
+      <p>Finish the 8 stranger mission strands and the side-character finals, then sweep the remaining activities, robberies and collectibles. Most trophies fall automatically once the checklist is done.</p>
+    </article>
+  </div>
+  <div class="warn-box">
+    <strong>Before you start:</strong> there is no mission replay and no New Game Plus. Keep a manual save at the start of every chapter and one before the final mission. The only trophy that can be missed is <strong>Positive Mental Attitude</strong> (the Chapter 1 meditation). Everything else stays available in free-roam after the story.
+  </div>
+</section>
+
+<section class="controls" id="controls">
+  <input id="search" type="search" placeholder="Search a trophy, mission or place…" aria-label="Search trophies">
+  <div class="chips" id="kindChips" role="group" aria-label="Filter by kind"></div>
+  <label class="ctl">Grade
+    <select id="gradeFilter">
+      <option value="all">All grades</option>
+      <option value="platinum">Platinum</option>
+      <option value="gold">Gold</option>
+      <option value="silver">Silver</option>
+      <option value="bronze">Bronze</option>
+    </select>
+  </label>
+  <label class="ctl toggle"><input id="spoilerToggle" type="checkbox"> Spoiler mode <span class="hint">hides story trophies until earned</span></label>
+  <label class="ctl toggle"><input id="earnedOnly" type="checkbox"> Earned only</label>
+  <button id="exportBtn" type="button">Export progress</button>
+  <label class="import-btn">Import progress <input id="importFile" type="file" accept="application/json"></label>
+  <button id="resetBtn" type="button">Reset</button>
+</section>
+
+<p class="stats-line" id="statsLine"></p>
+<main id="groups"></main>
+
+<footer>
+  <h2>Sources &amp; method</h2>
+  <p>Official names, descriptions and grades are as PlayStation publishes them, taken from the official list of 18 November 2026 (Exophase and PSNProfiles agree on every entry). Every guide is written in this entry&rsquo;s own words; each one names the guide it drew on beside it. Three hidden trophies are marked unconfirmed — their exact triggers are still being pinned down by guide writers, and this guide says so instead of guessing.</p>
+  <ul class="source-list" id="sourceList"></ul>
+  <p class="fine">No Rockstar Games logo, artwork or game screenshot appears anywhere in this guide — every visual is original CSS. The guide runs fully offline and fetches nothing.</p>
+</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>
