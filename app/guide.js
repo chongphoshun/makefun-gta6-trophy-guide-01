@@ -1,249 +1,140 @@
-// Leonida Trophy Codex — rendering: progress, up-next strip, filters, trophy groups, cards.
-// Sources are shown as plain text (name + address), never as links: the guide
-// runs fully offline and fetches nothing.
-// Each trophy renders exactly once, in its primary group (its kind). A trophy
-// that also belongs to another group — the one missable trophy, Positive Mental
-// Attitude, whose kind is Collectibles — is cross-listed there by name with an
-// anchor to its card, never as a second card.
-// Every card also lists up to three related trophies (same chapter, same
-// collectible chain, or same roadmap stage in the same kind), so a chain can
-// be followed from the card itself instead of searched for.
-import { state, KINDS, STAGE_NAMES, filteredTrophies, nextTrophies, toggleEarned } from './app.js';
+// Guide pane, roadmap stages and the Up-next planner. Every fact a guide
+// states names where it came from: the SOURCES table holds the full link for
+// each short name the data file cites, and the pane prints them beside the
+// guide so a reader can check any claim in one click.
 
-const GROUP_ORDER = [
-  { key: 'platinum', title: 'The Platinum', sub: 'One trophy. Earn the other 54 and this is yours.' },
-  { key: 'story', title: 'Story', sub: 'Chapters and missions — all hidden until earned, none missable.' },
-  { key: 'missable', title: 'Missable', sub: 'The one trophy that can be lost: meditate at Jason\u2019s house in Chapter 1.' },
-  { key: 'collectibles', title: 'Collectibles', sub: 'Cards, meditation spots, vehicles, and the whole of Leonida.' },
-  { key: 'activities', title: 'Activities', sub: 'Races, robberies, challenges, strangers, and the world itself.' },
-  { key: 'online', title: 'Online', sub: 'GTA VI launches with no online mode — no trophy needs it.' },
+export const SOURCES = {
+  PowerPyx: 'https://www.powerpyx.com/gta-6-grand-theft-auto-vi-trophy-guide-roadmap/',
+  GTABase: 'https://www.gtabase.com/articles/gta-6/gta-6-achievements-trophies-list-ps5-xbox-series',
+  'Push Square': 'https://www.pushsquare.com/guides/gta-6-trophy-guide-and-roadmap',
+  KeenGamer: 'https://www.keengamer.com/articles/guides/gta-6-trophy-guide-platinum-roadmap-all-55-trophies/',
+  GTASpotter: 'https://gtaspotter.com/en/guides/gta-6-trophies-and-achievements/',
+  Exophase: 'https://www.exophase.com/game/grand-theft-auto-vi-psn/trophies/',
+  PSNProfiles: 'https://psnprofiles.com/trophies/43531-grand-theft-auto-vi',
+};
+
+export const ROADMAP_STAGES = [
+  {
+    id: 1,
+    title: 'Stage 1 — Play the story, and mind the one missable',
+    time: 'About 60–80 hours',
+    blurb:
+      'Five chapters, and the story trophies fall out as you finish them. Do the optional missions as they appear, scan vehicles and study animals with the WAiNK app and binoculars while you travel, and above all do the Chapter 1 balcony meditation the moment Lucia offers it — it is the only spot in the game that can close for good.',
+    tips: [
+      'After the Down to Earth mission, find Lucia at Jason’s house in the morning and accept the balcony meditation.',
+      'Swap between Jason and Lucia often: Andy’s strand is Lucia-only, Tyrone’s and Bret’s are Jason-only.',
+      'Leave cheats off for the whole run — GTABase and PowerPyx both report that a cheat disables trophies and saving.',
+      'Save by hand at the start and end of every chapter; missions cannot be replayed.',
+    ],
+  },
+  {
+    id: 2,
+    title: 'Stage 2 — The 100% checklist',
+    time: 'About 100 hours',
+    blurb:
+      'After the credits, the checklist appears under Progress, then Stats, then 100% Completion, and everything you did during the story already counts toward it. PowerPyx puts it at roughly 60% true completion: most things are only partly required, but robberies, underwater discoveries, shooting ranges, drone races and Bret’s quests demand every last one.',
+    tips: [
+      'Work the checklist top to bottom: 39 gang operations, 22 bank jobs, 7 payday loan jobs and all 8 bank vaults.',
+      'Finish 70 of the 80 challenges — the ten hardest can be skipped entirely.',
+      'Collect 15 of the 18 card sets, 100 of the 125 Cocaine Flamingos and 33 underwater discoveries.',
+      'Gold all 42 shooting range challenges and win all 14 drone races.',
+    ],
+  },
+  {
+    id: 3,
+    title: 'Stage 3 — Strangers, cleanup and the platinum',
+    time: 'About 10 hours',
+    blurb:
+      'The last stretch: the eight Strangers & Freaks strands, the side-character final missions, and whatever miscellaneous trophies are still open. Every quest giver tied to a trophy returns after the story, so nothing here can be missed. When the final trophy pops, Vice Got a Price! follows at once.',
+    tips: [
+      'Finish any stranger strands left open; PowerPyx is still confirming exactly which eight count, so do them all.',
+      'Sweep the miscellaneous list: Combat Focus, the VCIA exit, the showroom smash, the money trophies.',
+      'Check the three unconfirmed trophies last — Personal Best, Bad Luck, I Guess and The Truth Is Out There have no verified method yet.',
+      'The platinum is one playthrough, no online trophies, no difficulty setting, no New Game+.',
+    ],
+  },
 ];
 
-function el(tag, cls, text) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text !== undefined) n.textContent = text;
-  return n;
+// Rank the next trophies to chase: unfinished stage-1 items first (they gate
+// the rest), then the missable, then whatever is earliest in roadmap order.
+// A trophy already earned never appears here.
+export function pickUpNext(trophies, earned, limit) {
+  const open = trophies.filter((t) => !earned.has(t.slug));
+  const rank = (t) => (t.missable ? 0 : t.stage * 10 + (t.kind === 'story' ? 0 : 5));
+  return open
+    .slice()
+    .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
+    .slice(0, limit || 5);
 }
 
-function gradeLabel(grade) {
-  return grade[0].toUpperCase() + grade.slice(1);
+export function whyNext(trophy) {
+  if (trophy.missable) return 'Do this one before anything else: it is the only trophy that can be missed, and its first spot closes at the end of Chapter 1.';
+  if (trophy.stage === 1) return 'Story stage — earn it while the chapters are in front of you; it unlocks the later stages.';
+  if (trophy.stage === 2) return '100% checklist stage — the long grind that decides the platinum.';
+  return 'Cleanup stage — quick to finish once the story and the checklist are done.';
 }
 
-function countText(t) {
-  if (t.count === null || t.count === undefined) return null;
-  if (t.id === 52) return '$250,000 laundered';
-  if (t.id === 53) return '$100,000 spent';
-  if (t.id === 48) return '500 actions';
-  return `${t.count} to go`;
+export function gradeLabel(grade) {
+  return grade.charAt(0).toUpperCase() + grade.slice(1);
 }
 
-// Related trophies for one card: same chapter first, then the same kind in
-// the same roadmap stage, then the rest of the same kind. At most three.
-function relatedTrophies(t) {
-  const score = (o) => {
-    if (t.chapter && o.chapter === t.chapter) return 0;
-    if (o.kind === t.kind && o.roadmap === t.roadmap) return 1;
-    if (o.kind === t.kind) return 2;
-    return 3;
+export function kindLabel(kind) {
+  const labels = {
+    meta: 'Platinum path',
+    story: 'Story',
+    side: 'Side quest',
+    collectible: 'Collectible',
+    activity: 'Activity',
+    crime: 'Crime',
+    exploration: 'Exploration',
   };
-  return state.trophies
-    .filter((o) => o.id !== t.id && score(o) < 3)
-    .sort((a, b) => score(a) - score(b) || a.id - b.id)
-    .slice(0, 3);
+  return labels[kind] || kind;
 }
 
-export function renderAll() {
-  renderProgress();
-  renderGradeChips();
-  renderUpNext();
-  renderKindChips();
-  renderGroups();
-  renderSources();
-}
-
-function renderProgress() {
-  const total = state.trophies.length;
-  const earned = state.earned.size;
-  const pct = total ? Math.round((earned / total) * 100) : 0;
-  document.getElementById('progressFill').style.width = `${pct}%`;
-  document.getElementById('progressText').textContent =
-    `${earned} of ${total} earned · ${pct}% to the platinum`;
-}
-
-function renderGradeChips() {
-  const box = document.getElementById('gradeChips');
-  box.replaceChildren();
-  for (const grade of ['platinum', 'gold', 'silver', 'bronze']) {
-    const have = state.trophies.filter((t) => t.grade === grade && state.earned.has(t.id)).length;
-    const total = state.trophies.filter((t) => t.grade === grade).length;
-    const chip = el('span', `grade-chip grade-${grade}`);
-    const b = el('b', null, gradeLabel(grade));
-    chip.append(b, ` ${have}/${total}`);
-    box.append(chip);
-  }
-}
-
-// v1.6: Up next — three cards naming the next unearned trophies in roadmap
-// order; each is a link that jumps to the trophy's card further down the page.
-function renderUpNext() {
-  const box = document.getElementById('upNextCards');
-  box.replaceChildren();
-  const next = nextTrophies(3);
-  if (next.length === 0) {
-    const done = el('a', 'up-next-card done', '');
-    done.href = '#trophy-1';
-    done.append(
-      el('span', 'stage-tag', 'Platinum'),
-      el('p', 'next-name', 'Vice Got a Price! — all 55 earned'),
-      el('span', 'next-grade', 'Leonida Legend'),
-    );
-    box.append(done);
-    return;
-  }
-  for (const t of next) {
-    const card = el('a', 'up-next-card');
-    card.href = `#trophy-${t.id}`;
-    card.append(
-      el('span', 'stage-tag', STAGE_NAMES[t.roadmap] ?? `Stage ${t.roadmap}`),
-      el('p', 'next-name', t.hidden && state.spoiler ? 'Hidden Trophy' : t.name),
-      el('span', 'next-grade', `${gradeLabel(t.grade)}${t.missable ? ' · Missable' : ''}${t.unconfirmed ? ' · Unconfirmed' : ''}`),
-    );
-    box.append(card);
-  }
-}
-
-function renderKindChips() {
-  const box = document.getElementById('kindChips');
-  box.replaceChildren();
-  for (const k of KINDS) {
-    const chip = el('button', `chip${state.filter === k.key ? ' active' : ''}`, k.label);
-    chip.type = 'button';
-    chip.title = k.hint;
-    chip.addEventListener('click', () => {
-      state.filter = k.key;
-      renderAll();
-    });
-    box.append(chip);
-  }
-}
-
-function trophyCard(t) {
-  const earned = state.earned.has(t.id);
-  const masked = state.spoiler && t.hidden && !earned;
-  const card = el('article', `trophy${earned ? ' earned' : ''}${state.highlight === t.id ? ' highlight' : ''}`);
-  card.id = `trophy-${t.id}`;
-  const head = el('div', 'trophy-head');
-  const box = document.createElement('input');
-  box.type = 'checkbox';
-  box.checked = earned;
-  box.setAttribute('aria-label', `Mark ${masked ? 'hidden trophy' : t.name} as earned`);
-  box.addEventListener('change', () => toggleEarned(t.id));
-  const body = el('div');
-  const name = el('h3', 'trophy-name', masked ? 'Hidden Trophy' : t.name);
-  if (!masked && t.hidden) {
-    const tag = el('span', 'hidden-tag', 'HIDDEN');
-    name.append(tag);
-  }
-  body.append(name);
-  const official = el('p', 'official', masked ? 'Hidden until earned — a story trophy. Tick it off to reveal it.' : `Official: “${t.description}”`);
-  body.append(official);
-  const badges = el('div', 'badges');
-  badges.append(el('span', `badge ${t.grade}`, gradeLabel(t.grade)));
-  if (t.missable) badges.append(el('span', 'badge missable', 'MISSABLE'));
-  if (t.unconfirmed) badges.append(el('span', 'badge unconfirmed', 'UNCONFIRMED'));
-  const count = countText(t);
-  if (count) badges.append(el('span', 'badge count', count));
-  if (t.chapter) badges.append(el('span', 'badge', t.chapter));
-  body.append(badges);
-  if (masked) {
-    body.append(el('p', 'spoiler-mask', 'Guide and source hidden by spoiler mode. Earn this trophy to reveal them.'));
-  } else {
-    body.append(el('p', 'guide', t.guide));
-    const src = el('p', 'source');
-    src.append(el('b', null, 'Source: '), document.createTextNode(`${t.source} — ${t.source_url}`));
-    body.append(src);
-    const related = relatedTrophies(t);
-    if (related.length) {
-      const line = el('p', 'related');
-      line.append(el('b', null, 'Related: '));
-      related.forEach((o, i) => {
-        if (i) line.append(document.createTextNode(' · '));
-        const a = el('a', null, o.name);
-        a.href = `#trophy-${o.id}`;
-        line.append(a);
-      });
-      body.append(line);
-    }
-  }
-  head.append(box, body);
-  card.append(head);
-  return card;
-}
-
-function renderGroups() {
-  const main = document.getElementById('groups');
-  main.replaceChildren();
-  const list = filteredTrophies();
-  const stats = document.getElementById('statsLine');
-  if (state.filter === 'online') {
-    stats.textContent = 'Online: 0 trophies. GTA VI launches as a single-player game with no online mode — every one of the 55 trophies is earned offline.';
-    const empty = el('p', 'empty', 'No online trophies. Everything in this guide is earned offline, in the single-player game.');
-    main.append(empty);
-    return;
-  }
-  stats.textContent = `Showing ${list.length} of ${state.trophies.length} trophies · ${state.earned.size} earned`;
-  if (list.length === 0) {
-    main.append(el('p', 'empty', 'Nothing matches these filters. Clear the search or pick another kind.'));
-    return;
-  }
-  for (const g of GROUP_ORDER) {
-    if (g.key === 'online') continue;
-    if (state.filter !== 'all' && state.filter !== 'missable' && g.key !== state.filter) continue;
-    if (state.filter === 'missable' && g.key !== 'missable') continue;
-    const h = el('h2', 'group-title', g.title);
-    const sub = el('p', 'group-sub', g.sub);
-    if (g.key === 'missable') {
-      const missable = list.filter((t) => t.missable);
-      if (missable.length === 0) continue;
-      main.append(h, sub);
-      // The Missable filter shows the full cards (each once — the other
-      // groups are hidden in that view). In every other view the missable
-      // trophies already have their card in their primary group, so this
-      // group lists them by name with an anchor instead of a second card.
-      if (state.filter === 'missable') {
-        for (const t of missable) main.append(trophyCard(t));
-      } else {
-        for (const t of missable) {
-          if (t.kind === 'missable') {
-            main.append(trophyCard(t));
-            continue;
-          }
-          const primary = GROUP_ORDER.find((x) => x.key === t.kind);
-          const line = el('p', 'xref');
-          const a = el('a', null, t.name);
-          a.href = `#trophy-${t.id}`;
-          line.append(a, document.createTextNode(` — also listed under ${primary ? primary.title : t.kind}`));
-          main.append(line);
-        }
-      }
-      continue;
-    }
-    const members = list.filter((t) => t.kind === g.key);
-    if (members.length === 0) continue;
-    main.append(h, sub);
-    for (const t of members) main.append(trophyCard(t));
-  }
-}
-
-function renderSources() {
-  const box = document.getElementById('sourceList');
-  if (box.children.length) return;
-  const seen = new Map();
-  for (const t of state.trophies) seen.set(t.source_url, t.source);
-  for (const [url, name] of seen) {
-    const li = el('li');
-    li.append(el('b', null, `${name} `), document.createTextNode(`— ${url}`));
-    box.append(li);
-  }
+// Build the guide pane for one trophy. Spoiler mode hides the name and the
+// official description of story trophies until they are earned; the guide
+// text itself stays readable, since it is written to be safe.
+export function guidePaneHtml(trophy, earned, spoilersOn, note) {
+  const isEarned = earned.has(trophy.slug);
+  const hiddenName = spoilersOn && trophy.kind === 'story' && !isEarned;
+  const shownName = hiddenName ? 'Hidden story trophy' : trophy.name;
+  const shownDesc = hiddenName ? 'Hidden until earned — turn spoilers off to read it.' : trophy.desc;
+  const sourceLinks = (trophy.src || [])
+    .map((site) => {
+      const url = SOURCES[site];
+      if (!url) return `<li>${site}</li>`;
+      return `<li><a href="${url}" target="_blank" rel="noopener">${site}</a></li>`;
+    })
+    .join('');
+  const warn = trophy.missable
+    ? `<div class="warn-box"><strong>Missable.</strong> This is the only trophy on the list that can be missed. Do the Chapter 1 meditation the moment it is offered — see the guide below.</div>`
+    : '';
+  const unconfirmed = trophy.unconfirmed
+    ? `<div class="note-box"><strong>Unconfirmed.</strong> No guide has verified how this trophy unlocks yet. This codex will not guess; check PowerPyx for updates.</div>`
+    : '';
+  const target = trophy.target
+    ? `<p class="trophy-target">Target: ${trophy.target.toLocaleString('en-US')}</p>`
+    : '';
+  return `
+    <h2>${shownName}</h2>
+    <p class="official-desc">${shownDesc}</p>
+    <div class="trophy-meta">
+      <span class="badge grade-${trophy.grade}">${gradeLabel(trophy.grade)}</span>
+      <span class="badge kind">${kindLabel(trophy.kind)}</span>
+      ${trophy.missable ? '<span class="badge missable">Missable</span>' : ''}
+      ${trophy.unconfirmed ? '<span class="badge unconfirmed">Unconfirmed</span>' : ''}
+      ${trophy.hidden ? '<span class="badge">Hidden on PSN</span>' : ''}
+    </div>
+    ${target}
+    ${warn}
+    ${unconfirmed}
+    <h3>How to earn it</h3>
+    <p class="guide-text">${trophy.guide}</p>
+    <h3>Sources</h3>
+    <ul class="source-list">${sourceLinks || '<li>Official trophy list (Exophase / PSNProfiles)</li>'}</ul>
+    <h3>Your note</h3>
+    <textarea class="note-input" id="trophyNote" rows="2" placeholder="Your own reminder for this trophy…">${note || ''}</textarea>
+    <div class="guide-actions">
+      <button type="button" class="primary" id="toggleEarned">${isEarned ? 'Mark as not earned' : 'Mark as earned'}</button>
+    </div>`;
 }

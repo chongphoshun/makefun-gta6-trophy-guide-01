@@ -1,44 +1,133 @@
-// Leonida Trophy Codex v1.6 — entrypoint (Node 22, standard library only).
-// The guide is this directory's app/ folder: plain static files a browser opens
-// at app/index.html (ES modules, CSS, no build step), offline — it loads nothing
-// over the network, and its trophy list and guides are app/data/trophies.json.
-// This program hands it in: it copies app/ and screenshots/ from beside this
-// file to /output and writes /output/dossier.json with the vendored make.fun
-// library. Leave vendor/makefun-frontend.ts as it is: the scorer requires
-// dossier.json to be byte for byte what its own copy writes.
+// Leonida Trophy Codex — the entry program (Node 22, standard library only).
+// It checks the guide before it hands it in, then copies app/ and
+// screenshots/ beside this file to /output and writes /output/dossier.json
+// with the vendored make.fun library. Outside the grader's container,
+// MAKEFUN_OUTPUT_DIR stands in for /output:
 //
-// Serve it locally with `node serve.ts`, then open http://localhost:8080.
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+//
+// The checks mirror the gate so a broken entry fails loudly here instead of
+// silently at the scorer: the trophy catalog must parse with 55 items, every
+// guide non-blank and every grade one of the four; the screenshots must be
+// 3 or 4 files, each under 256 KiB and inside the dimension limits.
 
-import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-frontend.ts';
 
-const here = fileURLToPath(new URL('.', import.meta.url));
-const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const REPO = fileURLToPath(new URL('.', import.meta.url));
+const OUT = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const GRADES = new Set(['platinum', 'gold', 'silver', 'bronze']);
+const SHOT_MAX_BYTES = 262144;
+const SHOT_LONG_MAX = 1280;
+const SHOT_SHORT_MIN = 480;
 
-// v1.6 guard: refuse to build a dossier with an over-cap screenshot instead of
-// handing the grader one it will reject (the scorer caps each at 256 KiB).
-// Re-recorded in-session for round 2; content identical to v1.4.
-const shotsDir = join(here, 'screenshots');
-for (const name of readdirSync(shotsDir)) {
-  const file = join(shotsDir, name);
-  if (!statSync(file).isFile()) continue;
-  const bytes = statSync(file).size;
-  if (bytes > 262144) throw new Error(`screenshot ${name} is ${bytes} bytes, over the 262,144-byte cap`);
+function fail(message) {
+  throw new Error(`main.ts: ${message}`);
 }
 
-mkdirSync(out, { recursive: true });
-cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
-mkdirSync(join(out, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+function readCatalog() {
+  const path = join(REPO, 'app', 'data', 'trophies.json');
+  if (!existsSync(path)) fail('app/data/trophies.json is missing');
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    fail(`app/data/trophies.json does not parse: ${error.message}`);
+  }
+  const items = Array.isArray(parsed) ? parsed : parsed.trophies;
+  if (!Array.isArray(items)) fail('trophies.json holds neither an array nor a { trophies } object');
+  return items;
+}
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
-// scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files and directories in app/ or
-// 48 MiB of app files: app/ counts beside /output's own 1000-entry cap, its screenshots/ and dossier.json).
-writeFileSync(
-  join(out, 'dossier.json'),
-  buildDossier(out, { text_max_bytes: 163840, screenshots: { max: 4, max_bytes: 262144 }, app_max_files: 993, app_max_bytes: 50331648 }),
-);
+function checkCatalog(items) {
+  if (items.length !== 55) fail(`catalog holds ${items.length} trophies, expected 55`);
+  const slugs = new Set();
+  for (const [index, item] of items.entries()) {
+    const where = `trophy ${index + 1}`;
+    if (typeof item.name !== 'string' || item.name.trim() === '') fail(`${where} has no name`);
+    if (typeof item.guide !== 'string' || item.guide.trim() === '') fail(`${where} (${item.name}) has a blank guide`);
+    if (!GRADES.has(item.grade)) fail(`${where} (${item.name}) has grade ${JSON.stringify(item.grade)}`);
+    if (typeof item.slug !== 'string' || item.slug.trim() === '') fail(`${where} (${item.name}) has no slug`);
+    if (slugs.has(item.slug)) fail(`duplicate slug ${item.slug}`);
+    slugs.add(item.slug);
+  }
+  return slugs.size;
+}
+
+// Image dimensions without a library: PNG carries them in IHDR, JPEG in the
+// first SOF frame marker. Anything else is rejected here.
+function readImageDims(path) {
+  const bytes = readFileSync(path);
+  const suffix = extname(path).toLowerCase();
+  if (suffix === '.png') {
+    if (bytes.length < 24 || bytes.toString('ascii', 1, 4) !== 'PNG') fail(`${path} is not a PNG`);
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  }
+  if (suffix === '.jpg' || suffix === '.jpeg') {
+    if (bytes[0] !== 0xff || bytes[1] !== 0xd8) fail(`${path} is not a JPEG`);
+    let offset = 2;
+    while (offset + 9 < bytes.length) {
+      if (bytes[offset] !== 0xff) fail(`${path} has a broken JPEG marker`);
+      const marker = bytes[offset + 1];
+      const length = bytes.readUInt16BE(offset + 2);
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { width: bytes.readUInt16BE(offset + 7), height: bytes.readUInt16BE(offset + 5) };
+      }
+      offset += 2 + length;
+    }
+    fail(`${path} has no JPEG frame to read`);
+  }
+  fail(`${path} is neither PNG nor JPEG`);
+  return { width: 0, height: 0 };
+}
+
+function checkShots() {
+  const dir = join(REPO, 'screenshots');
+  if (!existsSync(dir)) fail('screenshots/ is missing');
+  const files = readdirSync(dir).filter((name) => !name.startsWith('.')).sort();
+  if (files.length < 3 || files.length > 4) fail(`screenshots/ holds ${files.length} files, expected 3 or 4`);
+  const checked = [];
+  for (const name of files) {
+    // The gate's own naming rule: letters, digits and . _ - only, 1 to 128
+    // characters, never starting with . or -.
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(name)) fail(`screenshots/${name} breaks the gate's file-name rule`);
+    const path = join(dir, name);
+    if (!statSync(path).isFile()) fail(`screenshots/${name} is not a file`);
+    const size = statSync(path).size;
+    if (size > SHOT_MAX_BYTES) fail(`screenshots/${name} is ${size} bytes, over the 262144 cap`);
+    const { width, height } = readImageDims(path);
+    const long = Math.max(width, height);
+    const short = Math.min(width, height);
+    if (long > SHOT_LONG_MAX || short < SHOT_SHORT_MIN) {
+      fail(`screenshots/${name} is ${width}x${height}, outside ${SHOT_SHORT_MIN}-${SHOT_LONG_MAX}`);
+    }
+    checked.push({ name, size, width, height });
+  }
+  return checked;
+}
+
+function handIn() {
+  const counted = checkCatalog(readCatalog());
+  const shots = checkShots();
+  if (!existsSync(join(REPO, 'app', 'index.html'))) fail('app/index.html is missing');
+  mkdirSync(OUT, { recursive: true });
+  cpSync(join(REPO, 'app'), join(OUT, 'app'), { recursive: true });
+  mkdirSync(join(OUT, 'screenshots'), { recursive: true });
+  cpSync(join(REPO, 'screenshots'), join(OUT, 'screenshots'), { recursive: true });
+  writeFileSync(
+    join(OUT, 'dossier.json'),
+    buildDossier(OUT, {
+      text_max_bytes: 163840,
+      screenshots: { max: 4, max_bytes: 262144 },
+      app_max_files: 993,
+      app_max_bytes: 50331648,
+    }),
+  );
+  console.log(`codex handed in: ${counted} trophies, ${shots.length} screenshots`);
+  for (const shot of shots) console.log(`  ${shot.name} ${shot.width}x${shot.height} ${shot.size} bytes`);
+  console.log(`output: ${OUT}`);
+}
+
+handIn();
