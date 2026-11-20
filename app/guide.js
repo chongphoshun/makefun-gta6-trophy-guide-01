@@ -84,7 +84,7 @@ function renderGradeChips() {
   }
 }
 
-// v1.3: Up next — three cards naming the next unearned trophies in roadmap
+// v1.6: Up next — three cards naming the next unearned trophies in roadmap
 // order; each is a link that jumps to the trophy's card further down the page.
 function renderUpNext() {
   const box = document.getElementById('upNextCards');

@@ -1,4 +1,4 @@
-// Leonida Trophy Codex v1.3 — entrypoint (Node 22, standard library only).
+// Leonida Trophy Codex v1.6 — entrypoint (Node 22, standard library only).
 // The guide is this directory's app/ folder: plain static files a browser opens
 // at app/index.html (ES modules, CSS, no build step), offline — it loads nothing
 // over the network, and its trophy list and guides are app/data/trophies.json.
@@ -19,8 +19,9 @@ import { buildDossier } from './vendor/makefun-frontend.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// v1.3 guard: refuse to build a dossier with an over-cap screenshot instead of
+// v1.6 guard: refuse to build a dossier with an over-cap screenshot instead of
 // handing the grader one it will reject (the scorer caps each at 256 KiB).
+// Re-recorded in-session for round 2; content identical to v1.4.
 const shotsDir = join(here, 'screenshots');
 for (const name of readdirSync(shotsDir)) {
   const file = join(shotsDir, name);

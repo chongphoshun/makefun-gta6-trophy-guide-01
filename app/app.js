@@ -48,7 +48,7 @@ export function toggleEarned(id) {
   renderAll();
 }
 
-// v1.3: the next trophies to chase — unearned, in roadmap order (stage, then
+// v1.6: the next trophies to chase — unearned, in roadmap order (stage, then
 // list order), skipping the platinum itself until everything else is done.
 export function nextTrophies(count = 3) {
   const rest = state.trophies

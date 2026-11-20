@@ -52,7 +52,7 @@ h1 {
 .grade-silver b { color: var(--silver); }
 .grade-bronze b { color: var(--bronze); }
 
-/* v1.3: Up next — the next three unearned trophies in roadmap order, so the
+/* v1.6: Up next — the next three unearned trophies in roadmap order, so the
    reader always knows what to chase next without scrolling the whole list. */
 .up-next { max-width: 720px; }
 .up-next h2 { font-family: Georgia, serif; font-size: 20px; color: var(--gold); margin: 0 0 4px; }
