@@ -3,60 +3,113 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Leonida Trophy Codex — GTA VI Trophy Guide &amp; Tracker</title>
-<meta name="description" content="An offline guide and tracker for all 55 GTA VI PlayStation 5 trophies: checklist, roadmap, missables, cited guides.">
+<title>Leonida Field Journal — GTA VI Trophy Guide &amp; Tracker</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="masthead">
-  <h1>Leonida <em>Trophy Codex</em></h1>
-  <p class="tagline">Grand Theft Auto VI &middot; PlayStation 5 &middot; the complete 55-trophy guide and tracker &mdash; works offline, saves in your browser.</p>
-  <div class="progress-wrap">
-    <div class="big-count"><span id="earned-count">0</span><small> / 55 earned</small></div>
-    <div class="progress-bar" role="progressbar" aria-label="Trophies earned"><i id="progress-fill" style="width:0%"></i></div>
-    <div class="grade-chips" id="grade-chips"></div>
+  <div class="masthead-title">
+    <p class="kicker">Grand Theft Auto VI &middot; PlayStation 5 &middot; 55 trophies, all offline</p>
+    <h1>Leonida Field Journal</h1>
+    <p class="lede">A field guide and tracker for every GTA VI trophy: the official names, descriptions and grades, a roadmap to the platinum, the one missable trophy flagged in red, and a guide to each in our own words — with its sources named beside it.</p>
+    <p class="facts">Platinum ~200 hours &middot; difficulty 4/10 &middot; 1 playthrough &middot; 0 online trophies &middot; cheats disable trophies — keep them off. Estimates: PowerPyx.</p>
+  </div>
+  <div class="masthead-progress" aria-label="Progress">
+    <svg class="ring" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Trophies earned">
+      <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+      <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="ring-label"><strong id="earnedCount">0 / 55</strong><span>earned</span></div>
+    <p class="ring-sub" id="progressLine">The journal opens at 0. Tick a trophy and the ring fills.</p>
+    <p class="grade-chips" id="gradeChips"></p>
   </div>
 </header>
-<nav class="tabs" id="tabs" aria-label="Sections">
-  <button class="tab" type="button" data-view="tracker" aria-selected="true">Tracker</button>
-  <button class="tab" type="button" data-view="roadmap" aria-selected="false">Platinum Roadmap</button>
-  <button class="tab" type="button" data-view="missables" aria-selected="false">Missables</button>
-  <button class="tab" type="button" data-view="planner" aria-selected="false">Up Next</button>
+
+<nav class="viewnav" aria-label="Views">
+  <button type="button" data-view="checklist" class="viewbtn active">Checklist</button>
+  <button type="button" data-view="roadmap" class="viewbtn">Roadmap</button>
+  <button type="button" data-view="missables" class="viewbtn">Missables</button>
+  <button type="button" data-view="planner" class="viewbtn">Up Next</button>
+  <span class="viewnav-note">Spoiler-safe by default: hidden story trophies stay veiled until earned.</span>
 </nav>
-<div class="toolbar" id="toolbar">
-  <input type="search" id="search" placeholder="Search trophies by name or description&hellip;" aria-label="Search trophies">
-  <select id="kind" aria-label="Filter by kind">
-    <option value="all">All kinds</option>
-    <option value="story">Story</option>
-    <option value="side">Side characters</option>
-    <option value="collectible">Collectibles</option>
-    <option value="activity">Activities</option>
-    <option value="robbery">Robberies</option>
-    <option value="exploration">Exploration</option>
-    <option value="misc">One-offs</option>
-    <option value="completion">100% completion</option>
-    <option value="platinum">Platinum</option>
-  </select>
-  <select id="grade" aria-label="Filter by grade">
-    <option value="all">All grades</option>
-    <option value="platinum">Platinum</option>
-    <option value="gold">Gold</option>
-    <option value="silver">Silver</option>
-    <option value="bronze">Bronze</option>
-  </select>
-  <label class="toggle"><input type="checkbox" id="spoiler"> Spoiler mode — hide story trophies</label>
-  <label class="toggle"><input type="checkbox" id="remaining-only"> Remaining only</label>
-  <button class="btn" id="export" type="button">Export progress</button>
-  <button class="btn ghost" id="import-btn" type="button">Import progress</button>
-  <input type="file" id="import" accept="application/json" hidden>
+
+<div class="toolbar" role="search">
+  <input id="search" type="search" placeholder="Search a trophy, mission or place…" aria-label="Search trophies">
+  <label class="grade-pick">Grade
+    <select id="gradeFilter">
+      <option value="all">All grades</option>
+      <option value="platinum">Platinum</option>
+      <option value="gold">Gold</option>
+      <option value="silver">Silver</option>
+      <option value="bronze">Bronze</option>
+    </select>
+  </label>
+  <div class="kind-chips" id="kindChips" aria-label="Filter by kind"></div>
+  <label class="toggle"><input id="spoilerToggle" type="checkbox" checked> Spoiler mode</label>
+  <label class="toggle"><input id="remainingOnly" type="checkbox"> Remaining only</label>
 </div>
-<main class="layout">
-  <section id="panel" aria-live="polite"></section>
-  <aside class="detail" id="detail" aria-label="Trophy guide"></aside>
-</main>
-<footer class="foot">
-  <p>Names, descriptions and grades are the official PlayStation 5 list as published by Exophase and PSNProfiles. Every guide is written in our own words and cites its sources beside the trophy. Three trophies are honestly marked <b>unconfirmed</b> — their triggers are not verified anywhere yet, so this guide guesses nothing. No Rockstar artwork is used; the look is our own. Progress is stored only in your browser (<code>localStorage</code>) and never leaves your machine.</p>
+
+<div class="actions">
+  <button id="exportBtn" type="button">Export progress</button>
+  <label class="import-btn">Import progress <input id="importFile" type="file" accept="application/json"></label>
+  <button id="resetBtn" type="button">Reset progress</button>
+  <span class="actions-note" id="listCount"></span>
+</div>
+
+<div class="journal">
+  <aside class="sidebar">
+    <section class="card alert-card" id="missableAlert">
+      <h2>⚠ The one that can slip away</h2>
+      <p><strong>Positive Mental Attitude</strong> — meditate at every spot across Leonida. The <em>first</em> spot is offered in Chapter 1, at Jason&rsquo;s house after <em>Down to Earth</em>, when Lucia invites him to the balcony in the morning. Take it before Chapter 1 ends — after that it is gone for the playthrough.</p>
+      <p class="muted">Source: PowerPyx trophy roadmap &amp; KeenGamer platinum guide. Every other trophy can be earned in free-roam after the story.</p>
+    </section>
+    <section class="card">
+      <h2>Roadmap at a glance</h2>
+      <ol class="mini-roadmap" id="miniRoadmap"></ol>
+    </section>
+    <section class="card">
+      <h2>Up Next — your next five</h2>
+      <ol class="up-next" id="upNextSide"></ol>
+      <p class="muted">Missable first, then story in order, then the cheapest remaining trophy. Open the Up Next view for the reasons.</p>
+    </section>
+    <section class="card">
+      <h2>How this journal is honest</h2>
+      <p>Guides are written in our own words from the official descriptions and the cited sources — never copied. Three trophies are marked <strong>unconfirmed</strong> because no guide has pinned down their trigger yet: <em>Personal Best</em>, <em>Bad Luck, I Guess</em> and <em>The Truth Is Out There</em>. Their entries say so instead of guessing.</p>
+    </section>
+  </aside>
+
+  <main class="maincol">
+    <section id="view-checklist" data-section="checklist">
+      <p class="section-intro">Tick a trophy when you earn it — progress saves in this browser. Click any card to open its guide, steps, target and sources. Add a note to a trophy to remember where you left off.</p>
+      <div class="trophy-list" id="trophyList"></div>
+    </section>
+
+    <section id="view-roadmap" data-section="roadmap" hidden>
+      <h2 class="section-title">Roadmap to the platinum — six stages, about 200 hours</h2>
+      <p class="section-intro">Built from the official descriptions. Play the story first, protect the one missable meditation, then work the 100% checklist — which is kinder than it sounds: PowerPyx puts it near 60% true completion (200 of 277 vehicles, 100 of 255 animals, 50 of 66 weapons, 70 of 80 challenges).</p>
+      <div id="roadmapFull"></div>
+    </section>
+
+    <section id="view-missables" data-section="missables" hidden>
+      <h2 class="section-title">Missables — exactly one</h2>
+      <p class="section-intro">Of all 55 trophies, only <strong>Positive Mental Attitude</strong> can be missed, and only its first meditation spot. Everything else stays earnable in free-roam after the story, and there is no mission replay — so the journal flags the one moment that matters and lets the rest wait.</p>
+      <div id="missableList"></div>
+      <p class="muted">Note: some guides mention stranger strands having story-progress windows. No second trophy is confirmed missable, so this journal flags one and says so plainly.</p>
+    </section>
+
+    <section id="view-planner" data-section="planner" hidden>
+      <h2 class="section-title">Up Next planner</h2>
+      <p class="section-intro">The five most useful trophies to chase next, in order. The planner re-sorts itself every time you tick one off — the missable trophy always leads until it is earned.</p>
+      <ol class="planner-list" id="plannerList"></ol>
+    </section>
+  </main>
+</div>
+
+<footer class="colophon">
+  <p><strong>Sources per trophy:</strong> PowerPyx trophy guide &amp; roadmap, KeenGamer platinum roadmap, Push Square trophy guide, GTA Zone trophy list, Exophase official trophy list, PSNProfiles trophy list — each trophy names its two sources beside its guide. Official names, descriptions and grades follow PlayStation's list as Exophase and PSNProfiles published it (55 trophies: 1 platinum, 2 gold, 6 silver, 46 bronze; 28 hidden).</p>
+  <p>Leonida Field Journal is an unofficial fan-made guide. No Rockstar Games logo, artwork or game screenshot is used. Works offline from its own files; progress never leaves your browser unless you export it.</p>
 </footer>
+
 <script type="module" src="app.js"></script>
 </body>
 </html>
