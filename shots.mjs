@@ -1,106 +1,79 @@
-// Screenshot runner: serves app/ locally, renders each view in shots.json
-// with the Playwright headless shell, and converts the captures to JPEGs
-// under screenshots/ that fit the gate (long side at most 1280, short side
-// at least 480, each under 262144 bytes). Run with `node shots.mjs`.
-//
-//   node shots.mjs            -> uses the local serve.ts on port 8901
-//   node shots.mjs --port 8902 -> another port if 8901 is busy
-
+// Leonida Trophy Codex — screenshot runner (Node 22, standard library only).
+// Serves app/ on a throwaway port, renders each view in shots.json with the
+// Playwright headless shell, and writes JPEGs into screenshots/.
+//   node shots.mjs            (takes all 4 shots)
+// Chrome's full build cannot start on this machine, so this uses the
+// headless shell at ~/.cache/ms-playwright/chromium_headless_shell-1255.
 import { spawn, execFile } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const portFlag = process.argv.indexOf('--port');
-const port = portFlag === -1 ? 8901 : Number(process.argv[portFlag + 1]) || 8901;
+const here = fileURLToPath(new URL('.', import.meta.url));
+const appDir = join(here, 'app');
+const shotDir = join(here, 'screenshots');
+const shots = JSON.parse(readFileSync(join(here, 'shots.json'), 'utf8'));
 const SHELL = join(homedir(), '.cache/ms-playwright/chromium_headless_shell-1255/chrome-headless-shell-linux64/chrome-headless-shell');
+const PORT = Number(process.env.SHOTS_PORT ?? 8091);
 const MAX_BYTES = 262144;
 
-function run(command, args) {
-  return new Promise((resolvePromise, rejectPromise) => {
-    execFile(command, args, (error, stdout, stderr) => {
-      if (error) rejectPromise(new Error(`${command} failed: ${stderr || error.message}`));
-      else resolvePromise(stdout);
+function run(cmd, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const child = execFile(cmd, args, opts, (error, stdout, stderr) => {
+      if (error) reject(new Error(`${cmd} ${args.join(' ')} failed: ${stderr || error.message}`));
+      else resolve({ stdout, stderr });
     });
+    child.stdout?.on('data', (d) => process.stdout.write(d));
+    child.stderr?.on('data', (d) => process.stderr.write(d));
   });
 }
 
-function sleep(ms) {
-  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
-}
-
-async function waitForServer(base, tries) {
-  for (let attempt = 0; attempt < tries; attempt += 1) {
+async function waitForServer(url, tries = 40) {
+  for (let i = 0; i < tries; i++) {
     try {
-      const res = await fetch(base);
+      const res = await fetch(url);
       if (res.ok) return;
-    } catch {
-      // Not up yet.
-    }
-    await sleep(250);
+    } catch { /* not up yet */ }
+    await new Promise((r) => setTimeout(r, 250));
   }
-  throw new Error(`server did not answer at ${base}`);
+  throw new Error(`server never came up at ${url}`);
 }
 
-// Convert a PNG capture to JPEG with PIL, stepping the quality down until
-// the file fits the gate, and report the final size and dimensions.
-async function pngToJpeg(pngPath, jpgPath, width, height) {
-  const script = [
-    'import sys',
-    'from PIL import Image',
-    'src, dst = sys.argv[1], sys.argv[2]',
-    'im = Image.open(src).convert("RGB")',
-    'q = 85',
-    'while True:',
-    '    im.save(dst, "JPEG", quality=q, optimize=True)',
-    '    import os',
-    '    size = os.path.getsize(dst)',
-    '    if size <= 262144 or q <= 45:',
-    '        print(f"{size} {im.size[0]}x{im.size[1]} q={q}")',
-    '        break',
-    '    q -= 5',
-  ].join('\n');
-  const out = await run('python3', ['-c', script, pngPath, jpgPath]);
-  return out.trim();
-}
-
-async function main() {
-  const shots = JSON.parse(readFileSync(join(here, 'shots.json'), 'utf8'));
-  const outDir = join(here, 'screenshots');
-  mkdirSync(outDir, { recursive: true });
-  const server = spawn(process.execPath, [join(here, 'serve.ts'), '--port', String(port)], {
-    stdio: 'ignore',
-  });
-  try {
-    const base = `http://127.0.0.1:${port}`;
-    await waitForServer(base, 40);
-    for (const shot of shots) {
-      const pngPath = join(outDir, `.tmp-${shot.file}.png`);
-      const jpgPath = join(outDir, shot.file);
-      await run(SHELL, [
-        '--headless',
-        '--disable-gpu',
-        '--no-sandbox',
-        '--virtual-time-budget=8000',
-        `--screenshot=${pngPath}`,
-        `--window-size=${shot.viewport.width},${shot.viewport.height}`,
-        '--hide-scrollbars',
-        `${base}${shot.url}`,
-      ]);
-      const report = await pngToJpeg(pngPath, jpgPath, shot.viewport.width, shot.viewport.height);
-      unlinkSync(pngPath);
-      console.log(`${shot.file}: ${report}`);
-      if (!existsSync(jpgPath)) throw new Error(`missing output ${jpgPath}`);
-    }
-    console.log(`done: ${shots.length} screenshots in ${outDir}`);
-  } finally {
-    server.kill();
+async function toJpeg(png, jpg) {
+  // q:v 4 is roughly JPEG quality 82. Step down if the file is over the cap.
+  for (const quality of [4, 6, 8, 10, 12]) {
+    await run('ffmpeg', ['-y', '-v', 'error', '-i', png, '-q:v', String(quality), jpg]);
+    if (statSync(jpg).size <= MAX_BYTES) return quality;
   }
+  throw new Error(`${jpg} is still over ${MAX_BYTES} bytes at the lowest quality`);
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
+const server = spawn(process.execPath, [join(here, 'serve.ts'), '--port', String(PORT)], {
+  cwd: here, stdio: 'inherit',
 });
+try {
+  await waitForServer(`http://127.0.0.1:${PORT}/`);
+  mkdirSync(shotDir, { recursive: true });
+  const tmp = join(here, '.shots-tmp');
+  mkdirSync(tmp, { recursive: true });
+  for (const shot of shots) {
+    const url = `http://127.0.0.1:${PORT}${shot.path}`;
+    const png = join(tmp, shot.file.replace(/\.jpe?g$/i, '.png'));
+    const jpg = join(shotDir, shot.file);
+    await run(SHELL, [
+      '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars',
+      `--window-size=${shot.viewport.width},${shot.viewport.height}`,
+      '--virtual-time-budget=8000',
+      `--screenshot=${png}`, url,
+    ]);
+    const quality = await toJpeg(png, jpg);
+    const size = statSync(jpg).size;
+    console.log(`${shot.file}: ${size} bytes (ffmpeg q:v ${quality}) <- ${url}`);
+    if (size > MAX_BYTES) throw new Error(`${shot.file} over the 256 KiB cap`);
+  }
+  rmSync(tmp, { recursive: true, force: true });
+  console.log(`All ${shots.length} screenshots written to ${shotDir}`);
+} finally {
+  server.kill('SIGTERM');
+}

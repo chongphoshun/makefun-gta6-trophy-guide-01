@@ -1,51 +1,45 @@
 # Leonida Trophy Codex
 
-An offline guide and tracker for all 55 PlayStation 5 trophies of **Grand Theft Auto VI** — built for the make.fun bounty `gta6-trophy-guide-01`.
+An offline guide and tracker for all **55 GTA VI PlayStation 5 trophies** — 1 platinum, 2 gold, 6 silver, 46 bronze (28 hidden). Free, open source (MIT), no network at run time.
 
-## What it is
+## What it does
 
-A static web app (no build step, no network at run time) that covers the whole official list — 1 platinum, 2 gold, 6 silver, 46 bronze, 28 hidden, 0 online — with:
+- **Tracker** — every trophy with its official name, description and grade, a checklist saved in `localStorage`, export/import of progress, and per-trophy notes.
+- **Filters** — by kind (story, side characters, collectibles, activities, robberies, exploration, one-offs, 100% completion, platinum), by grade, by text search, and remaining-only.
+- **Spoiler mode** — hides the name and description of hidden story trophies until they are earned.
+- **Platinum Roadmap** — three stages in order: play the story, open Leonida, then cleanup to 100% and the Platinum.
+- **Missables** — exactly one trophy is flagged missable: **Positive Mental Attitude** (meditate at all 18 spots). A watch list covers the side-character finals and the unconfirmed trophies, with save advice.
+- **Up Next planner** — the next five trophies in order: missable first, then story, then the short jobs.
+- **Cited guides** — every trophy's guide is written in our own words from the official description and cites its sources (Exophase, PSNProfiles, and the guide pages named beside each trophy). Three trophies are honestly marked **unconfirmed** — Personal Best, Bad Luck, I Guess, The Truth Is Out There — because no source has verified their trigger yet. This guide guesses nothing.
 
-- **Checklist tracker** — tick trophies off as you earn them; progress is saved in `localStorage`, with export to a JSON file and import back. Each trophy can carry a personal note.
-- **Kind filters** — story, missable, collectibles, activities, crime, side quests, exploration, and online (which honestly reports that there are no online trophies), plus a grade filter and full-text search.
-- **Spoiler setting** — hides the names and descriptions of story trophies until you earn them.
-- **Roadmap to the platinum** — three stages in order (story 60–80h, the 100% checklist ~100h, cleanup ~10h), built from PowerPyx's roadmap and the official descriptions. About 200 hours total, difficulty 4/10, one playthrough.
-- **Missables** — exactly one trophy is flagged as possibly missable, Positive Mental Attitude, with the Chapter 1 warning spelled out. Three trophies (Personal Best, Bad Luck, I Guess, The Truth Is Out There) are flagged **unconfirmed**: no guide has verified how they unlock, so this codex says so instead of guessing.
-- **Up next planner** — your next five trophies in chase order: the missable first, then the story stage, then the checklist grind.
-- **Cited guides** — every trophy's guide is written for this codex in its own words and names its sources beside it (PowerPyx, GTABase, Push Square, KeenGamer, GTASpotter, Exophase, PSNProfiles), with links.
-
-The look is our own — warm dusk colours, no Rockstar logo or artwork anywhere.
-
-## Try it
+## Run it
 
 ```sh
-node serve.ts
-# open http://localhost:8080
+node serve.ts            # serves app/ on http://localhost:8080
 ```
 
-Add `?demo=1` to preview the app with 13 trophies already earned (in-memory only; your real progress is untouched). `?tab=roadmap`, `?focus=<slug>` and `?spoilers=on` jump straight to a view, which is how the screenshots were taken.
+Open `app/index.html` in any desktop browser. No build step, no network.
 
 ## Screenshots
 
 ```sh
-node shots.mjs
+node shots.mjs           # renders the 4 views in shots.json to screenshots/
 ```
 
-Serves the app locally, renders the four views in `shots.json` with a headless browser, and writes JPEGs to `screenshots/` — each under the 256 KiB gate cap.
+Uses the Playwright headless shell; each shot is 1280×800 JPEG under 256 KiB.
 
-## Hand in
+## Hand it in
 
 ```sh
 mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 ```
 
-`main.ts` validates the trophy catalog (55 items, every guide non-blank) and the screenshots (3–4 files, each under 256 KiB, dimensions inside the gate), copies `app/` and `screenshots/` to the output directory, and writes `dossier.json` with the vendored `buildDossier` library.
+`main.ts` copies `app/` and `screenshots/` to the output directory and writes `dossier.json` with the kit's `buildDossier` from `vendor/makefun-frontend.ts`.
 
 ## Sources
 
-- Trophy names, descriptions and grades: the official PS5 list as published by Exophase (`exophase.com/game/grand-theft-auto-vi-psn/trophies/`) and PSNProfiles (`psnprofiles.com/trophies/43531-grand-theft-auto-vi`).
-- Roadmap and method facts: PowerPyx (`powerpyx.com/gta-6-grand-theft-auto-vi-trophy-guide-roadmap/`), GTABase, Push Square, KeenGamer and GTASpotter — cited per trophy inside the app. No guide text is copied from any of them.
+- Official trophy list: Exophase — https://www.exophase.com/game/grand-theft-auto-vi-psn/trophies/
+- PSN progress targets: PSNProfiles — https://psnprofiles.com/trophies/43531-grand-theft-auto-vi
+- Cross-checks: Of Zen and Computing, EGamers, HowToVideoGame (linked per trophy where used).
 
-## License
-
-MIT — see `LICENSE`.
+No Rockstar logo or official artwork is used anywhere; the look is original.
